@@ -11,7 +11,7 @@ pipeline {
     
     options {
         timeout(time: 30, unit: 'MINUTES')  // Таймаут сборки
-        retry(2)  // Количество попыток перезапуска при ошибке
+        retry(1)  // Количество попыток перезапуска при ошибке
         disableConcurrentBuilds()  // Запрещаем параллельные сборки
     }
     
