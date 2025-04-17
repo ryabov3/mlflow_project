@@ -6,7 +6,7 @@ pipeline {
         REPO_URL = 'git@github.com:yourusername/mlflow_project.git'
         BRANCH = 'main'  // или 'master' в зависимости от вашего репозитория
         CREDENTIALS_ID = 'jenkins-github-ssh'  // ID ваших SSH-ключей в Jenkins
-        PYTHON = 'python3'  // Используемая версия Python
+        PYTHON = 'python3.12'  // Используемая версия Python
     }
     
     options {
