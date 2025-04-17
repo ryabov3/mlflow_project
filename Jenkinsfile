@@ -45,25 +45,22 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh """
-                            ${env.PYTHON} -m pip install --upgrade pip
-                            ${env.PYTHON} -m pip install -r requirements.txt
-                        """
+                        // Проверка наличия pip
+                        sh '''
+                            if ! python3.12 -m pip --version; then
+                                echo "Установка pip для Python 3.12..."
+                                curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+                                python3.12 get-pip.py
+                            fi
+                        '''
+                        
+                        // Установка зависимостей
+                        sh '''
+                            python3.12 -m pip install --upgrade pip
+                            python3.12 -m pip install -r requirements.txt
+                        '''
                     } catch (Exception e) {
                         error "Ошибка установки зависимостей: ${e.message}"
-                    }
-                }
-            }
-        }
-        
-        // Этап 3: Загрузка и подготовка данных
-        stage('Prepare Data') {
-            steps {
-                script {
-                    try {
-                        sh "${env.PYTHON} download.py"
-                    } catch (Exception e) {
-                        error "Ошибка подготовки данных: ${e.message}"
                     }
                 }
             }
