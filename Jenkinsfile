@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         // Основные переменные окружения
-        REPO_URL = 'git@github.com:ryabov3/mlflow_project.git'
+        REPO_URL = 'https://github.com/ryabov3/mlflow_project.git'
         BRANCH = 'main'  // или 'master' в зависимости от вашего репозитория
         CREDENTIALS_ID = 'jenkins-github-ssh'  // ID ваших SSH-ключей в Jenkins
         PYTHON = 'python3.12'  // Используемая версия Python
