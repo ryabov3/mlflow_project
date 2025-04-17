@@ -1,11 +1,27 @@
 pipeline {
     agent any
     
+    options {
+        gitLabConnection('gitlab-connection')
+    }
+    
     environment {
         PYTHON = 'python3.12'
+        REPO_URL = 'https://github.com/ryabov3/mlflow_project.git'
+        BRANCH = 'main'
     }
     
     stages {
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.BRANCH}"]],
+                    userRemoteConfigs: [[url: "${env.REPO_URL}"]],
+                    extensions: [[$class: 'CleanBeforeCheckout']]
+                ])
+            }
+        
         stage('Install Dependencies') {
             steps {
                 sh 'pip install -r requirements.txt'
