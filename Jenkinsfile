@@ -45,15 +45,6 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Проверка наличия pip
-                        sh '''
-                            if ! python3.12 -m pip --version; then
-                                echo "Установка pip для Python 3.12..."
-                                curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-                                python3.12 get-pip.py
-                            fi
-                        '''
-                        
                         // Установка зависимостей
                         sh '''
                             python3.12 -m pip install --upgrade pip
