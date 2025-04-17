@@ -1,83 +1,180 @@
 pipeline {
-    agent any
-    
-    options {
-        gitLabConnection('gitlab-connection')
-    }
+    agent any  // Запускаем на любом доступном агенте
     
     environment {
-        PYTHON = 'python3.12'
-        REPO_URL = 'https://github.com/ryabov3/mlflow_project.git'
-        BRANCH = 'main'
+        // Основные переменные окружения
+        REPO_URL = 'git@github.com:yourusername/mlflow_project.git'
+        BRANCH = 'main'  // или 'master' в зависимости от вашего репозитория
+        CREDENTIALS_ID = 'jenkins-github-ssh'  // ID ваших SSH-ключей в Jenkins
+        PYTHON = 'python3'  // Используемая версия Python
+    }
+    
+    options {
+        timeout(time: 30, unit: 'MINUTES')  // Таймаут сборки
+        retry(2)  // Количество попыток перезапуска при ошибке
+        disableConcurrentBuilds()  // Запрещаем параллельные сборки
     }
     
     stages {
+        // Этап 1: Получение кода из репозитория
         stage('Checkout') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.BRANCH}"]],
-                    userRemoteConfigs: [[url: "${env.REPO_URL}"]],
-                    extensions: [[$class: 'CleanBeforeCheckout']]
-                ])
+                script {
+                    try {
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[name: "*/${env.BRANCH}"]],
+                            userRemoteConfigs: [[
+                                url: "${env.REPO_URL}",
+                                credentialsId: "${env.CREDENTIALS_ID}"
+                            ]],
+                            extensions: [
+                                [$class: 'CleanBeforeCheckout'],
+                                [$class: 'CloneOption', timeout: 60]
+                            ]
+                        ])
+                    } catch (Exception e) {
+                        error "Ошибка при получении кода: ${e.message}"
+                    }
+                }
             }
+        }
         
+        // Этап 2: Установка зависимостей Python
         stage('Install Dependencies') {
             steps {
-                sh 'pip install -r requirements.txt'
+                script {
+                    try {
+                        sh """
+                            ${env.PYTHON} -m pip install --upgrade pip
+                            ${env.PYTHON} -m pip install -r requirements.txt
+                        """
+                    } catch (Exception e) {
+                        error "Ошибка установки зависимостей: ${e.message}"
+                    }
+                }
             }
         }
         
-        stage('Download and Preprocess Data') {
+        // Этап 3: Загрузка и подготовка данных
+        stage('Prepare Data') {
             steps {
-                sh '${PYTHON} download.py'
+                script {
+                    try {
+                        sh "${env.PYTHON} download.py"
+                    } catch (Exception e) {
+                        error "Ошибка подготовки данных: ${e.message}"
+                    }
+                }
             }
         }
         
+        // Этап 4: Обучение модели
         stage('Train Model') {
             steps {
-                sh '${PYTHON} train.py'
+                script {
+                    try {
+                        // Проверяем существование MLflow сервера
+                        sh """
+                            if ! nc -z 127.0.0.1 5000; then
+                                echo "MLflow server не запущен на 127.0.0.1:5000"
+                            fi
+                        """
+                        
+                        // Запускаем обучение
+                        sh "${env.PYTHON} train.py"
+                        
+                        // Проверяем, что модель создана
+                        sh "test -f model.pkl || exit 1"
+                    } catch (Exception e) {
+                        error "Ошибка обучения модели: ${e.message}"
+                    }
+                }
             }
         }
         
-        stage('Deploy Model') {
+        // Этап 5: Запуск сервиса
+        stage('Deploy Service') {
             steps {
-                sh 'nohup ${PYTHON} serve.py > server.log 2>&1 &'
-                echo 'Model service started on port 5001'
+                script {
+                    try {
+                        // Останавливаем предыдущий сервис, если запущен
+                        sh 'pkill -f "python.*serve.py" || true'
+                        
+                        // Запускаем сервис в фоновом режиме
+                        sh "nohup ${env.PYTHON} serve.py > server.log 2>&1 &"
+                        
+                        // Ждем запуска сервиса
+                        sleep(time: 10, unit: 'SECONDS')
+                    } catch (Exception e) {
+                        error "Ошибка запуска сервиса: ${e.message}"
+                    }
+                }
             }
         }
         
+        // Этап 6: Тестирование сервиса
         stage('Test Service') {
             steps {
                 script {
-                    sleep(time: 5, unit: 'SECONDS')  # Даем сервису время запуститься
-                    
-                    // Пример тестового запроса
-                    def test_data = '''
-                    {
-                        "hours_studied": 6,
-                        "previous_scores": 85,
-                        "sleep_hours": 7,
-                        "sample_papers": 2,
-                        "extracurricular": 1
+                    try {
+                        // Подготовка тестовых данных
+                        def testData = '''
+                        {
+                            "hours_studied": 6,
+                            "previous_scores": 85,
+                            "sleep_hours": 7,
+                            "sample_papers": 2,
+                            "extracurricular": 1
+                        }
+                        '''
+                        
+                        // Отправка тестового запроса
+                        def response = sh(
+                            script: """
+                                curl -s -X POST http://localhost:5001/predict \
+                                -H "Content-Type: application/json" \
+                                -d '${testData}'
+                            """,
+                            returnStdout: true
+                        )
+                        
+                        // Проверка ответа
+                        if (!response.contains('prediction')) {
+                            error "Некорректный ответ от сервиса: ${response}"
+                        }
+                        
+                        echo "Тестовый запрос успешен. Ответ: ${response}"
+                    } catch (Exception e) {
+                        error "Ошибка тестирования сервиса: ${e.message}"
                     }
-                    '''
-                    
-                    def response = sh(script: """
-                        curl -X POST http://localhost:5001/predict \
-                        -H "Content-Type: application/json" \
-                        -d '${test_data}' | python -m json.tool
-                    """, returnStdout: true)
-                    
-                    echo "Service response: ${response}"
                 }
             }
         }
     }
     
     post {
+        // Действия после успешного выполнения
+        success {
+            echo 'Pipeline успешно завершен!'
+            slackSend(color: 'good', message: "Pipeline успешно завершен: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+        }
+        
+        // Действия при неудачном выполнении
+        failure {
+            echo 'Pipeline завершился с ошибкой!'
+            slackSend(color: 'danger', message: "Pipeline завершился с ошибкой: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+            
+            // Архивируем логи для анализа
+            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
+        }
+        
+        // Действия в любом случае
         always {
-            echo 'Pipeline completed'
+            echo 'Завершение выполнения Pipeline'
+            
+            // Очистка
+            sh 'pkill -f "python.*serve.py" || true'
         }
     }
 }
