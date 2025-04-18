@@ -141,7 +141,8 @@ if __name__ == "__main__":
     
     dfruns = mlflow.search_runs()
     path_to_model = dfruns.sort_values("metrics.r2", ascending=False).iloc[0]['artifact_uri'].replace("file://","") + '/model'
-    print(path_to_model)
+    with open("best_model.txt", "w") as file:
+        file.write(path_to_model)
 
 
 
