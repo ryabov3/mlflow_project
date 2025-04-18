@@ -130,7 +130,7 @@ if __name__ == "__main__":
     model = train_and_log_model(
         SGDRegressor(random_state=42),
         params,
-        "SGD_Regressor",
+        "model",
         X_train, y_train, X_val, y_val
     )
     
