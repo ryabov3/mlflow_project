@@ -135,9 +135,10 @@ if __name__ == "__main__":
     )
     
     pickle.dump(model, open('model.pkl', 'wb'))
-    path_2_model = 'model.pkl'
-    print(path_2_model)
-# In[ ]:
+    
+    dfruns = mlflow.search_runs()
+    path_to_model = dfruns.sort_values("metrics.r2", ascending=False).iloc[0]['artifact_uri'].replace("file://","") + '/model'
+    print(path_to_model)
 
 
 
