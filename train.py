@@ -136,27 +136,6 @@ if __name__ == "__main__":
     
     pickle.dump(model, open('model.pkl', 'wb'))
 
-
-# In[71]:
-
-
-y_pred = model.predict(X_test)
-
-# 4. Оценка качества модели
-print("\nОценка качества на тестовых данных:")
-print(f"MAE: {mean_absolute_error(y_test, y_pred):.2f}")
-print(f"MSE: {mean_squared_error(y_test, y_pred):.2f}")
-print(f"R2: {r2_score(y_test, y_pred):.2f}")
-
-# 5. Пример предсказания для новых данных
-print("\nПример предсказания для 5 студентов:")
-results = pd.DataFrame({
-    'Реальные значения': y_test,
-    'Предсказания': y_pred,
-    'Разница': np.abs(y_test - y_pred)
-})
-
-
 # In[ ]:
 
 
