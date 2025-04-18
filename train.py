@@ -135,7 +135,8 @@ if __name__ == "__main__":
     )
     
     pickle.dump(model, open('model.pkl', 'wb'))
-
+path_2_model = 'model.pkl'
+print(path_2_model)
 # In[ ]:
 
 
