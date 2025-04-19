@@ -140,7 +140,7 @@ if __name__ == "__main__":
     pickle.dump(model, open('model.pkl', 'wb'))
     
     dfruns = mlflow.search_runs()
-    path_to_model = dfruns.sort_values("metrics.r2", ascending=False).iloc[0]['artifact_uri'].replace("file://","") + '/model'
+    path_to_model = dfruns['artifact_uri'].iloc[0].replace('mlflow-artifacts:', 'file:///home/ryabov3/mlartifacts') + '/model'
     with open("best_model.txt", "w") as file:
         file.write(path_to_model)
 
